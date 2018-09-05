@@ -1,18 +1,18 @@
-const prefixBoundary = '\r\n--';
-const delimData = '\r\n\r\n';
+const prefixBoundary = "\r\n--";
+const delimData = "\r\n\r\n";
 
 function getValueIgnoringKeyCase(object, key) {
-    const foundKey = Object
-        .keys(object)
-        .find(currentKey => currentKey.toLocaleLowerCase() === key.toLowerCase());
-    return object[foundKey];
+  const foundKey = Object.keys(object).find(
+    currentKey => currentKey.toLocaleLowerCase() === key.toLowerCase()
+  );
+  return object[foundKey];
 }
 
 function getBoundary(event) {
-    return getValueIgnoringKeyCase(event.headers, 'Content-Type').split('=')[1];
+  return getValueIgnoringKeyCase(event.headers, "Content-Type").split("=")[1];
 }
 
-const defaultResult = {files: {}, fields: {}};
+const defaultResult = { files: {}, fields: {} };
 
 /**
  * Split gently
@@ -22,7 +22,8 @@ const defaultResult = {files: {}, fields: {}};
  */
 const split = (str, delim) => [
   str.substring(0, str.indexOf(delim)),
-  str.substring(str.indexOf(delim) + delim.length)];
+  str.substring(str.indexOf(delim) + delim.length)
+];
 
 /**
  * Get value of key, case insensitive
@@ -30,9 +31,15 @@ const split = (str, delim) => [
  * @param {String} lookedKey
  * @return {String}
  */
-const getValueIgnoringKeyCase = (obj, lookedKey) => Object.keys(obj)
-.map(presentKey => presentKey.toLowerCase() === lookedKey.toLowerCase() ? obj[presentKey] : null)
-.filter(item => item)[0];
+const getValueIgnoringKeyCase = (obj, lookedKey) =>
+  Object.keys(obj)
+    .map(
+      presentKey =>
+        presentKey.toLowerCase() === lookedKey.toLowerCase()
+          ? obj[presentKey]
+          : null
+    )
+    .filter(item => item)[0];
 
 /**
  * Parser
@@ -41,35 +48,43 @@ const getValueIgnoringKeyCase = (obj, lookedKey) => Object.keys(obj)
  * @return {*}
  */
 module.exports.parse = (event, spotText) => {
-  const boundary = prefixBoundary + getValueIgnoringKeyCase(event.headers, 'Content-Type').split('=')[1];
-  if (!boundary) { return defaultResult;}
-  return (event.isBase64Encoded ? Buffer.from(event.body, 'base64').toString('binary') : event.body)
-  .split(boundary)
-  .filter((item) => item.indexOf('Content-Disposition: form-data') !== -1)
-  .map((item) => {
-    const tmp = split(item, delimData);
-    const header = tmp[0];
-    let content = tmp[1];
-    const name = header.match(/name="([^"]+)"/)[1];
-    const result = {};
-    result[name] = content;
+  const boundary =
+    prefixBoundary +
+    getValueIgnoringKeyCase(event.headers, "Content-Type").split("=")[1];
+  if (!boundary) {
+    return defaultResult;
+  }
+  return (event.isBase64Encoded
+    ? Buffer.from(event.body, "base64").toString("binary")
+    : event.body
+  )
+    .split(boundary)
+    .filter(item => item.indexOf("Content-Disposition: form-data") !== -1)
+    .map(item => {
+      const tmp = split(item, delimData);
+      const header = tmp[0];
+      let content = tmp[1];
+      const name = header.match(/name="([^"]+)"/)[1];
+      const result = {};
+      result[name] = content;
 
-    if (header.indexOf('filename') !== -1) {
-      const filename = header.match(/filename="([^"]+)"/)[1];
-      const contentType = header.match(/Content-Type: (.+)/)[1];
+      if (header.indexOf("filename") !== -1) {
+        const filename = header.match(/filename="([^"]+)"/)[1];
+        const contentType = header.match(/Content-Type: (.+)/)[1];
 
-      if (!(spotText && contentType.indexOf('text') !== -1)) { // replace content with binary
-        content = Buffer.from(content, 'binary');
+        if (!(spotText && contentType.indexOf("text") !== -1)) {
+          // replace content with binary
+          content = Buffer.from(content, "binary");
+        }
+        result[name] = {
+          type: "file",
+          filename: filename,
+          contentType: contentType,
+          content: content,
+          size: content.length
+        };
       }
-      result[name] = {
-        type: 'file',
-        filename: filename,
-        contentType: contentType,
-        content: content,
-        size: content.length
-      };
-    }
-    return result;
-  })
-  .reduce((accumulator, current) => Object.assign(accumulator, current), {});
+      return result;
+    })
+    .reduce((accumulator, current) => Object.assign(accumulator, current), {});
 };
