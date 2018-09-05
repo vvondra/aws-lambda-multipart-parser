@@ -1,6 +1,17 @@
 const prefixBoundary = '\r\n--';
 const delimData = '\r\n\r\n';
 
+function getValueIgnoringKeyCase(object, key) {
+    const foundKey = Object
+        .keys(object)
+        .find(currentKey => currentKey.toLocaleLowerCase() === key.toLowerCase());
+    return object[foundKey];
+}
+
+function getBoundary(event) {
+    return getValueIgnoringKeyCase(event.headers, 'Content-Type').split('=')[1];
+}
+
 const defaultResult = {files: {}, fields: {}};
 
 /**
